@@ -1,0 +1,290 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "functions": [],
+  "resources": [
+    {
+      "type": "Microsoft.Network/virtualNetworks",
+      "apiVersion": "2020-06-01",
+      "name": "biceptestvnet",
+      "location": "eastus",
+      "tags": {
+        "createdby": "Gourav"
+      },
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "10.0.0.0/16"
+          ]
+        },
+        "enableDdosProtection": false,
+        "enableVmProtection": false,
+        "subnets": [
+          {
+            "name": "biceptestsubnet1",
+            "properties": {
+              "addressPrefix": "10.0.0.0/24"
+            }
+          },
+          {
+            "name": "biceptestsubnet2",
+            "properties": {
+              "addressPrefix": "10.0.1.0/24"
+            }
+          },
+          {
+            "name": "biceptestsubnet3",
+            "properties": {
+              "addressPrefix": "10.0.2.0/24"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Network/publicIPAddresses",
+      "apiVersion": "2020-05-01",
+      "name": "biceptestpip",
+      "location": "[resourceGroup().location]",
+      "sku": {
+        "name": "Standard"
+      },
+      "properties": {
+        "publicIPAddressVersion": "IPv4",
+        "publicIPAllocationMethod": "Static"
+      },
+      "tags": {
+        "createdby": "Gourav"
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkInterfaces",
+      "apiVersion": "2020-05-01",
+      "name": "biceptestnic1",
+      "location": "[resourceGroup().location]",
+      "tags": {
+        "createdby": "Gourav"
+      },
+      "properties": {
+        "enableAcceleratedNetworking": false,
+        "enableIPForwarding": false,
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "subnet": {
+                "id": "[reference(resourceId('Microsoft.Network/virtualNetworks', 'biceptestvnet')).subnets[0].id]"
+              },
+              "privateIPAllocationMethod": "Dynamic",
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses', 'biceptestpip')]"
+              }
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/publicIPAddresses', 'biceptestpip')]",
+        "[resourceId('Microsoft.Network/virtualNetworks', 'biceptestvnet')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/networkInterfaces",
+      "apiVersion": "2020-05-01",
+      "name": "biceptestnic2",
+      "location": "[resourceGroup().location]",
+      "tags": {
+        "createdby": "Gourav"
+      },
+      "properties": {
+        "enableAcceleratedNetworking": false,
+        "enableIPForwarding": false,
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "subnet": {
+                "id": "[reference(resourceId('Microsoft.Network/virtualNetworks', 'biceptestvnet')).subnets[1].id]"
+              },
+              "privateIPAllocationMethod": "Dynamic"
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', 'biceptestvnet')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2019-06-01",
+      "name": "biceptestsa",
+      "location": "[resourceGroup().location]",
+      "tags": {
+        "createdby": "Gourav"
+      },
+      "kind": "StorageV2",
+      "sku": {
+        "name": "Standard_LRS",
+        "tier": "Standard"
+      },
+      "properties": {
+        "supportsHttpsTrafficOnly": true
+      }
+    },
+    {
+      "type": "Microsoft.Compute/availabilitySets",
+      "apiVersion": "2019-12-01",
+      "name": "biceptestavset",
+      "location": "[resourceGroup().location]",
+      "tags": {
+        "createdby": "Gourav"
+      },
+      "properties": {
+        "platformFaultDomainCount": 2,
+        "platformUpdateDomainCount": 3
+      },
+      "sku": {
+        "name": "Aligned"
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines",
+      "apiVersion": "2019-12-01",
+      "name": "biceptestvm1",
+      "location": "[resourceGroup().location]",
+      "tags": {
+        "createdby": "Gourav"
+      },
+      "properties": {
+        "availabilitySet": {
+          "id": "[resourceId('Microsoft.Compute/availabilitySets', 'biceptestavset')]"
+        },
+        "diagnosticsProfile": {
+          "bootDiagnostics": {
+            "enabled": true,
+            "storageUri": "[reference(resourceId('Microsoft.Storage/storageAccounts', 'biceptestsa')).primaryEndpoints.blob]"
+          }
+        },
+        "hardwareProfile": {
+          "vmSize": "Standard_A2_v2"
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', 'biceptestnic1')]"
+            }
+          ]
+        },
+        "osProfile": {
+          "adminUsername": "biceptestvm1-adm",
+          "adminPassword": "Test@1111122222",
+          "computerName": "biceptestvm1",
+          "windowsConfiguration": {
+            "enableAutomaticUpdates": true,
+            "provisionVMAgent": true,
+            "timeZone": "UTC"
+          }
+        },
+        "storageProfile": {
+          "imageReference": {
+            "offer": "WindowsServer",
+            "publisher": "MicrosoftWindowsServer",
+            "sku": "2016-Datacenter",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "biceptestvm1-os",
+            "caching": "None",
+            "createOption": "FromImage",
+            "diskSizeGB": 127,
+            "osType": "Windows"
+          },
+          "dataDisks": [
+            {
+              "caching": "None",
+              "createOption": "Empty",
+              "diskSizeGB": 100,
+              "lun": 0,
+              "name": "biceptestvm1-data1"
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Compute/availabilitySets', 'biceptestavset')]",
+        "[resourceId('Microsoft.Network/networkInterfaces', 'biceptestnic1')]",
+        "[resourceId('Microsoft.Storage/storageAccounts', 'biceptestsa')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines",
+      "apiVersion": "2019-12-01",
+      "name": "biceptestvm2",
+      "location": "[resourceGroup().location]",
+      "tags": {
+        "createdby": "Gourav"
+      },
+      "properties": {
+        "availabilitySet": {
+          "id": "[resourceId('Microsoft.Compute/availabilitySets', 'biceptestavset')]"
+        },
+        "diagnosticsProfile": {
+          "bootDiagnostics": {
+            "enabled": true,
+            "storageUri": "[reference(resourceId('Microsoft.Storage/storageAccounts', 'biceptestsa')).primaryEndpoints.blob]"
+          }
+        },
+        "hardwareProfile": {
+          "vmSize": "Standard_A2_v2"
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', 'biceptestnic2')]"
+            }
+          ]
+        },
+        "osProfile": {
+          "adminUsername": "biceptestvm2-adm",
+          "adminPassword": "Test@1111122222",
+          "computerName": "biceptestvm2",
+          "windowsConfiguration": {
+            "enableAutomaticUpdates": true,
+            "provisionVMAgent": true,
+            "timeZone": "UTC"
+          }
+        },
+        "storageProfile": {
+          "imageReference": {
+            "offer": "WindowsServer",
+            "publisher": "MicrosoftWindowsServer",
+            "sku": "2016-Datacenter",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "biceptestvm2-os",
+            "caching": "None",
+            "createOption": "FromImage",
+            "diskSizeGB": 127,
+            "osType": "Windows"
+          },
+          "dataDisks": [
+            {
+              "caching": "None",
+              "createOption": "Empty",
+              "diskSizeGB": 100,
+              "lun": 0,
+              "name": "biceptestvm2-data1"
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Compute/availabilitySets', 'biceptestavset')]",
+        "[resourceId('Microsoft.Storage/storageAccounts', 'biceptestsa')]",
+        "[resourceId('Microsoft.Network/networkInterfaces', 'biceptestnic2')]"
+      ]
+    }
+  ]
+}
