@@ -1,0 +1,313 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "functions": [],
+  "variables": {
+    "vnetname": "biceptestvnet",
+    "vnetrange": "10.0.0.0/16",
+    "subnetName1": "biceptestsubnet1",
+    "subnetName2": "biceptestsubnet2",
+    "subnetName3": "biceptestsubnet3",
+    "subnet1range": "10.0.0.0/24",
+    "subnet2range": "10.0.1.0/24",
+    "subnet3range": "10.0.2.0/24",
+    "pipname": "biceptestpip",
+    "nic1name": "biceptestnic1",
+    "nic2name": "biceptestnic2",
+    "storageacc": "biceptestsa",
+    "avsetname": "biceptestavset",
+    "vm1name": "biceptestvm1",
+    "vm2name": "biceptestvm2"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Network/virtualNetworks",
+      "apiVersion": "2020-06-01",
+      "name": "[variables('vnetname')]",
+      "location": "[resourceGroup().location]",
+      "tags": {
+        "createdby": "Gourav"
+      },
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "[variables('vnetrange')]"
+          ]
+        },
+        "enableDdosProtection": false,
+        "enableVmProtection": false,
+        "subnets": [
+          {
+            "name": "[variables('subnetName1')]",
+            "properties": {
+              "addressPrefix": "[variables('subnet1range')]"
+            }
+          },
+          {
+            "name": "[variables('subnetName2')]",
+            "properties": {
+              "addressPrefix": "[variables('subnet2range')]"
+            }
+          },
+          {
+            "name": "[variables('subnetName3')]",
+            "properties": {
+              "addressPrefix": "[variables('subnet3range')]"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Network/publicIPAddresses",
+      "apiVersion": "2020-05-01",
+      "name": "[variables('pipname')]",
+      "location": "[resourceGroup().location]",
+      "sku": {
+        "name": "Standard"
+      },
+      "properties": {
+        "publicIPAddressVersion": "IPv4",
+        "publicIPAllocationMethod": "Static"
+      },
+      "tags": {
+        "createdby": "Gourav"
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkInterfaces",
+      "apiVersion": "2020-05-01",
+      "name": "[variables('nic1name')]",
+      "location": "[resourceGroup().location]",
+      "tags": {
+        "createdby": "Gourav"
+      },
+      "properties": {
+        "enableAcceleratedNetworking": false,
+        "enableIPForwarding": false,
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "subnet": {
+                "id": "[format('{0}/subnets/{1}', resourceId('Microsoft.Network/virtualNetworks', variables('vnetname')), variables('subnetName1'))]"
+              },
+              "privateIPAllocationMethod": "Dynamic",
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('pipname'))]"
+              }
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/publicIPAddresses', variables('pipname'))]",
+        "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetname'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/networkInterfaces",
+      "apiVersion": "2020-05-01",
+      "name": "[variables('nic2name')]",
+      "location": "[resourceGroup().location]",
+      "tags": {
+        "createdby": "Gourav"
+      },
+      "properties": {
+        "enableAcceleratedNetworking": false,
+        "enableIPForwarding": false,
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "subnet": {
+                "id": "[format('{0}/subnets/{1}', resourceId('Microsoft.Network/virtualNetworks', variables('vnetname')), variables('subnetName2'))]"
+              },
+              "privateIPAllocationMethod": "Dynamic"
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetname'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2019-06-01",
+      "name": "[variables('storageacc')]",
+      "location": "[resourceGroup().location]",
+      "tags": {
+        "createdby": "Gourav"
+      },
+      "kind": "StorageV2",
+      "sku": {
+        "name": "Standard_LRS",
+        "tier": "Standard"
+      },
+      "properties": {
+        "supportsHttpsTrafficOnly": true
+      }
+    },
+    {
+      "type": "Microsoft.Compute/availabilitySets",
+      "apiVersion": "2019-12-01",
+      "name": "[variables('avsetname')]",
+      "location": "[resourceGroup().location]",
+      "tags": {
+        "createdby": "Gourav"
+      },
+      "properties": {
+        "platformFaultDomainCount": 2,
+        "platformUpdateDomainCount": 3
+      },
+      "sku": {
+        "name": "Aligned"
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines",
+      "apiVersion": "2019-12-01",
+      "name": "[variables('vm1name')]",
+      "location": "[resourceGroup().location]",
+      "tags": {
+        "createdby": "Gourav"
+      },
+      "properties": {
+        "availabilitySet": {
+          "id": "[resourceId('Microsoft.Compute/availabilitySets', variables('avsetname'))]"
+        },
+        "diagnosticsProfile": {
+          "bootDiagnostics": {
+            "enabled": true,
+            "storageUri": "[reference(resourceId('Microsoft.Storage/storageAccounts', variables('storageacc'))).primaryEndpoints.blob]"
+          }
+        },
+        "hardwareProfile": {
+          "vmSize": "Standard_F4s_v2"
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('nic1name'))]"
+            }
+          ]
+        },
+        "osProfile": {
+          "adminUsername": "[format('{0}-adm', variables('vm1name'))]",
+          "adminPassword": "Test@1111122222",
+          "computerName": "[variables('vm1name')]",
+          "windowsConfiguration": {
+            "enableAutomaticUpdates": true,
+            "provisionVMAgent": true,
+            "timeZone": "UTC"
+          }
+        },
+        "storageProfile": {
+          "imageReference": {
+            "offer": "WindowsServer",
+            "publisher": "MicrosoftWindowsServer",
+            "sku": "2016-Datacenter",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "[format('{0}-os', variables('vm1name'))]",
+            "caching": "None",
+            "createOption": "FromImage",
+            "diskSizeGB": 127,
+            "osType": "Windows"
+          },
+          "dataDisks": [
+            {
+              "caching": "None",
+              "createOption": "Empty",
+              "diskSizeGB": 100,
+              "lun": 0,
+              "name": "[format('{0}-data1', variables('vm1name'))]",
+              "managedDisk": {
+                "storageAccountType": "Premium_LRS"
+              }
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Compute/availabilitySets', variables('avsetname'))]",
+        "[resourceId('Microsoft.Network/networkInterfaces', variables('nic1name'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageacc'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines",
+      "apiVersion": "2019-12-01",
+      "name": "[variables('vm2name')]",
+      "location": "[resourceGroup().location]",
+      "tags": {
+        "createdby": "Gourav"
+      },
+      "properties": {
+        "availabilitySet": {
+          "id": "[resourceId('Microsoft.Compute/availabilitySets', variables('avsetname'))]"
+        },
+        "diagnosticsProfile": {
+          "bootDiagnostics": {
+            "enabled": true,
+            "storageUri": "[reference(resourceId('Microsoft.Storage/storageAccounts', variables('storageacc'))).primaryEndpoints.blob]"
+          }
+        },
+        "hardwareProfile": {
+          "vmSize": "Standard_F4s_v2"
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('nic2name'))]"
+            }
+          ]
+        },
+        "osProfile": {
+          "adminUsername": "[format('{0}-adm', variables('vm2name'))]",
+          "adminPassword": "Test@1111122222",
+          "computerName": "[variables('vm2name')]",
+          "windowsConfiguration": {
+            "enableAutomaticUpdates": true,
+            "provisionVMAgent": true,
+            "timeZone": "UTC"
+          }
+        },
+        "storageProfile": {
+          "imageReference": {
+            "offer": "WindowsServer",
+            "publisher": "MicrosoftWindowsServer",
+            "sku": "2016-Datacenter",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "[format('{0}-os', variables('vm2name'))]",
+            "caching": "None",
+            "createOption": "FromImage",
+            "diskSizeGB": 127,
+            "osType": "Windows"
+          },
+          "dataDisks": [
+            {
+              "caching": "None",
+              "createOption": "Empty",
+              "diskSizeGB": 100,
+              "lun": 0,
+              "name": "[format('{0}-data1', variables('vm2name'))]",
+              "managedDisk": {
+                "storageAccountType": "Premium_LRS"
+              }
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Compute/availabilitySets', variables('avsetname'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageacc'))]",
+        "[resourceId('Microsoft.Network/networkInterfaces', variables('nic2name'))]"
+      ]
+    }
+  ]
+}
